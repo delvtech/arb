@@ -17,7 +17,7 @@ config = wandb.config if "WANDB_RUN_ID" in os.environ else {}
 # setup
 Normal = namedtuple("Normal", ["mean", "std"])
 num_blocks = 1000 if "num_blocks" not in config else int(config["num_blocks"])
-rate = Normal(0.035, 0.005)
+rate = Normal(0.035, 0.005)  # mean of 3.5% and std of 0.5%
 randseed = 0 if "randseed" not in config else int(config["randseed"])
 
 # %%
@@ -39,7 +39,6 @@ for fee_rate in np.arange(min_fees, max_fees + increment, increment):
         rate_history = [rate.mean]
         target_history = [np.nan]
         volume = 0
-        trader_happiness = 0
         lp_profit = 0
         for block in range(1, num_blocks):
             # every trader has a different target rate
@@ -57,14 +56,13 @@ for fee_rate in np.arange(min_fees, max_fees + increment, increment):
                 rate_history.append(new_rate)
                 rate_change = abs(rate_history[-1] - rate_history[-2])
                 volume += rate_change
-                trader_happiness += rate_change
                 lp_profit += fees
                 if debug:
-                    print(f"{block=} {rate_change=} {fees=} {trader_happiness=}")
+                    print(f"{block=} {rate_change=} {fees=}")
                 trades += 1
             else:
                 rate_history.append(rate_history[-1])
-        records.append((fee_rate, epoch, trader_happiness, lp_profit, volume))
+        records.append((fee_rate, epoch, lp_profit, volume))
         rate_histories.append(rate_history)
         target_histories.append(target_history)
         if debug:
@@ -76,8 +74,8 @@ print(f"simulated {trades=} trades in {time.time() - start_time} seconds")
 if RUNNING_INTERACTIVE:
     rh_df = pd.DataFrame(rate_histories)
     target_df = pd.DataFrame(target_histories)
-    results = pd.DataFrame(records, columns=["fee_rate", "epoch", "trader_happiness", "lp_profit", "volume"])
-    results["happiness"] = results["lp_profit"] + results["trader_happiness"] * 0.5
+    results = pd.DataFrame(records, columns=["fee_rate", "epoch", "lp_profit", "volume"])
+    results["profit_and_volume"] = results["lp_profit"] + results["volume"] * 0.5
     # display(results)
 
 # %%
@@ -109,16 +107,14 @@ if RUNNING_INTERACTIVE:
 if RUNNING_INTERACTIVE:
     fig, ax = plt.subplots(1, 1, figsize=(8, 4))
     sns.lineplot(x="fee_rate", y="lp_profit", data=results, color="blue", ax=ax, label="lp profit", errorbar="pi")
-    # sns.lineplot(x="fee_rate", y="trader_happiness", data=results, color="orange", ax=ax, label="trader happiness", errorbar="pi")
     sns.lineplot(x="fee_rate", y="volume", data=results, color="red", ax=ax, label="volume", errorbar="pi")
-    sns.lineplot(x="fee_rate", y="happiness", data=results, color="green", ax=ax, label="total happiness", errorbar="pi")
-    plt.xlim([0, 1])
+    sns.lineplot(x="fee_rate", y="profit_and_volume", data=results, color="green", ax=ax, label="volume/2 + lp profit", errorbar="pi")
+    plt.xlim([0, 0.2])
     plt.xlabel("fees")
     plt.ylabel("profit (% points)")
-    # find index where happiness is max
-    max_happiness = np.round(results['fee_rate'][results["happiness"].idxmax()], 2)
+    max_profit_and_volume = np.round(results['fee_rate'][results["profit_and_volume"].idxmax()], 2)
     max_lp_profit = np.round(results['fee_rate'][results["lp_profit"].idxmax()], 2)
-    plt.title(f"max happiness at fees={max_happiness}, lp_profit at fees={max_lp_profit}")
+    plt.title(f"max profit_and_volume at fees={max_profit_and_volume}, lp_profit at fees={max_lp_profit}")
     plt.legend();
 
 # %%
