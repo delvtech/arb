@@ -118,3 +118,16 @@ if RUNNING_INTERACTIVE:
     plt.legend();
 
 # %%
+# plot together
+if RUNNING_INTERACTIVE:
+    fig, ax = plt.subplots(1, 1, figsize=(8, 4))
+    sns.lineplot(x="fee_rate", y="lp_profit", data=results, color="blue", ax=ax, label="lp profit", errorbar="pi")
+    sns.lineplot(x="fee_rate", y="volume", data=results, color="red", ax=ax, label="volume", errorbar="pi")
+    plt.xlim([0, 0.2])
+    plt.xlabel("fees")
+    plt.ylabel("profit (% points)")
+    max_lp_profit = np.round(results['fee_rate'][results["lp_profit"].idxmax()], 2)
+    plt.title(f"max lp profit at fees={max_lp_profit}")
+    plt.legend();
+
+# %%
